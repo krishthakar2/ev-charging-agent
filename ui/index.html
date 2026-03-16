@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EV Charging Agent</title>
+  <style>
+    :root {
+      --bg:           #f5f5f7;
+      --surface:      #ffffff;
+      --surface-2:    #f9f9fb;
+      --border:       #e4e4e9;
+      --border-focus: #0071e3;
+      --text-primary: #1d1d1f;
+      --text-secondary:#6e6e73;
+      --text-tertiary:#aeaeb2;
+      --accent:       #0071e3;
+      --accent-soft:  #e8f1fc;
+      --accent-hover: #0077ed;
+      --success:      #34c759;
+      --success-soft: #edfaf1;
+      --warning:      #ff9f0a;
+      --warning-soft: #fff6e5;
+      --danger:       #ff3b30;
+      --danger-soft:  #fff1f0;
+      --shadow-sm:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:    0 4px 12px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.04);
+      --radius-sm:    8px;
+      --radius:       14px;
+      --radius-lg:    18px;
+      --font: -apple-system,"SF Pro Text","SF Pro Display",BlinkMacSystemFont,
+              "Helvetica Neue",Helvetica,Arial,sans-serif;
+      --mono: "SF Mono","Fira Code","Cascadia Code","Menlo",monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 48px 20px 80px;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── CARD ─────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── WALLET BAR ───────────────────────────────────────── */
+    .wallet-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .wallet-amount {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--text-primary);
+      transition: color .2s;
+    }
+
+    .wallet-amount.wallet-low { color: var(--danger); }
+
+    .wallet-topup-btn {
+      padding: 9px 18px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(0,113,227,.2);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .wallet-topup-btn:hover    { background: #d4e6fa; }
+    .wallet-topup-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── MODE TOGGLE ──────────────────────────────────────── */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+    }
+
+    .mode-btn {
+      padding: 11px 16px;
+      border-radius: 11px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all .18s ease;
+      text-align: left;
+    }
+
+    .mode-btn:hover { color: var(--text-primary); }
+
+    .mode-btn.active {
+      background: var(--surface);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
+    }
+
+    .mode-btn .sub {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-tertiary);
+      margin-top: 1px;
+      display: block;
+    }
+
+    .mode-btn.active .sub { color: var(--text-secondary); }
+
+    /* ── FORM ─────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-full  { grid-column: 1 / -1; }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-group input,
+    .form-group select {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 13px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23aeaeb2' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(0,113,227,.12);
+      background: var(--surface);
+    }
+
+    .form-group input::placeholder { color: var(--text-tertiary); }
+    .form-group select option { background: var(--surface); }
+
+    /* ── BUTTONS ──────────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      letter-spacing: -.01em;
+    }
+
+    .btn:hover   { background: var(--accent-hover); box-shadow: 0 2px 8px rgba(0,113,227,.28); }
+    .btn:active  { transform: scale(.99); }
+    .btn:disabled { background: var(--border); color: var(--text-tertiary); cursor: not-allowed; box-shadow: none; transform: none; }
+
+    /* ── BADGE ────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .badge-idle    { background: #f1f1f3; color: var(--text-tertiary); }
+    .badge-idle::before { background: var(--text-tertiary); }
+    .badge-running { background: #e8f1fc; color: var(--accent); animation: pulse-badge 1.4s ease-in-out infinite; }
+    .badge-running::before { background: var(--accent); }
+    .badge-done    { background: var(--success-soft); color: #248a3d; }
+    .badge-done::before { background: var(--success); }
+    .badge-error   { background: var(--danger-soft); color: #c1271d; }
+    .badge-error::before { background: var(--danger); }
+
+    @keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.65} }
+
+    /* ── LOG ──────────────────────────────────────────────── */
+    .log-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      min-height: 140px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.75;
+      word-break: break-word;
+    }
+
+    .log-box .placeholder { color: var(--text-tertiary); font-style: italic; font-family: var(--font); font-size: 13px; }
+    .log-tool    { color: #0071e3; }
+    .log-result  { color: #aeaeb2; }
+    .log-success { color: #248a3d; }
+    .log-error   { color: var(--danger); }
+    .log-info    { color: var(--text-secondary); }
+    .log-wallet  { color: #b36200; font-weight: 600; }
+
+    /* ── REASONING ────────────────────────────────────────── */
+    .reasoning-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      line-height: 1.75;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .reasoning-box strong { color: var(--accent); font-weight: 600; }
+    .reasoning-box ul { padding-left: 18px; margin: 8px 0; }
+    .reasoning-box li { margin: 4px 0; color: var(--text-secondary); }
+
+    /* ── CHARGER CARDS ────────────────────────────────────── */
+    .charger-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .charger-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .charger-card:hover { border-color: #c7d8f5; box-shadow: var(--shadow-md); }
+
+    .charger-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      gap: 12px;
+    }
+
+    .charger-name    { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; letter-spacing: -.01em; }
+    .charger-address { font-size: 12.5px; color: var(--text-secondary); }
+    .charger-operator{ font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
+
+    .book-btn {
+      padding: 8px 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background .15s, box-shadow .15s;
+    }
+
+    .book-btn:hover    { background: var(--accent-hover); box-shadow: 0 2px 6px rgba(0,113,227,.25); }
+    .book-btn:disabled { background: var(--border); color: var(--text-tertiary); cursor: not-allowed; box-shadow: none; }
+
+    .charger-stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stat-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 10px;
+      text-align: center;
+    }
+
+    .stat-value { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; letter-spacing: -.01em; }
+    .stat-label { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; display: block; font-weight: 500; }
+
+    .congestion-low    .stat-value { color: #248a3d; }
+    .congestion-medium .stat-value { color: #b36200; }
+    .congestion-high   .stat-value { color: var(--danger); }
+
+    .charger-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .amenities     { display: flex; gap: 5px; flex-wrap: wrap; }
+    .amenity-tag   { background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; font-size: 11.5px; color: var(--text-secondary); }
+    .rating        { font-size: 12.5px; color: var(--warning); font-weight: 600; white-space: nowrap; }
+
+    /* ── NO CHARGERS ──────────────────────────────────────── */
+    .no-chargers-box { background: var(--danger-soft); border: 1px solid rgba(255,59,48,.18); border-radius: var(--radius-sm); padding: 16px 18px; margin-bottom: 16px; }
+    .no-chargers-title { color: #c1271d; font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+    .no-chargers-msg   { color: var(--text-secondary); font-size: 13.5px; line-height: 1.6; }
+
+    .rejected-section-title { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-bottom: 8px; margin-top: 4px; }
+    .rejected-list  { display: flex; flex-direction: column; gap: 8px; }
+    .rejected-item  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+    .rejected-name  { color: var(--text-primary); font-weight: 600; margin-bottom: 5px; font-size: 13.5px; }
+    .rejected-reason{ color: var(--text-secondary); font-size: 12.5px; margin-top: 2px; line-height: 1.5; }
+
+    .suggestions-box   { background: var(--success-soft); border: 1px solid rgba(52,199,89,.2); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 14px; }
+    .suggestions-title { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-bottom: 7px; }
+    .suggestion-item   { color: #1a7a37; font-size: 13.5px; margin-top: 5px; line-height: 1.5; }
+
+    /* ── INSUFFICIENT FUNDS ───────────────────────────────── */
+    .insufficient-funds-box   { background: var(--danger-soft); border: 1px solid rgba(255,59,48,.2); border-radius: var(--radius-sm); padding: 16px 18px; }
+    .insufficient-funds-title { color: #c1271d; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .insufficient-funds-msg   { color: var(--text-secondary); font-size: 13.5px; line-height: 1.6; }
+
+    /* ── BOOKING CONFIRMATION ─────────────────────────────── */
+    .booking-confirmed { background: var(--surface); border: 1px solid rgba(52,199,89,.25); border-radius: var(--radius); padding: 24px; box-shadow: 0 0 0 4px var(--success-soft); }
+    .booking-confirmed h3 { color: #1a7a37; font-size: 17px; font-weight: 600; margin-bottom: 22px; display: flex; align-items: center; gap: 8px; letter-spacing: -.01em; }
+
+    .booking-section       { margin-bottom: 18px; }
+    .booking-section-title { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; font-weight: 600; }
+    .booking-grid          { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .booking-item          { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 13px; }
+
+    .booking-item label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 3px; font-weight: 500; }
+    .booking-item span  { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+    .booking-item span.highlight { color: var(--accent); font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+    .booking-item span.success   { color: #1a7a37; font-weight: 700; }
+
+    .booking-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    .booking-message { background: var(--success-soft); border: 1px solid rgba(52,199,89,.2); border-radius: var(--radius-sm); padding: 11px 14px; font-size: 13.5px; color: #1a7a37; line-height: 1.5; }
+    .amenities-booking { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- WALLET BAR -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom:14px">Wallet</div>
+      <div class="wallet-bar">
+        <div>
+          <div style="font-size:11px;color:var(--text-tertiary);font-weight:500;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Available Balance</div>
+          <div class="wallet-amount" id="walletAmount">₹500.00</div>
+        </div>
+        <button class="wallet-topup-btn" id="topupBtn" onclick="topUpWallet()">
+          + Add ₹500
+        </button>
+      </div>
+    </div>
+
+    <!-- INPUT CARD -->
+    <div class="card">
+      <div class="card-label">Charging Request</div>
+
+      <div class="mode-grid">
+        <div class="mode-btn active" id="browseBtn" onclick="setMode('browse')">
+          Show Me Chargers
+          <span class="sub">Browse and choose yourself</span>
+        </div>
+        <div class="mode-btn" id="autoBtn" onclick="setMode('auto')">
+          Auto Find &amp; Book
+          <span class="sub">Agent picks and books for you</span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label>Your Current Location</label>
+          <input type="text" id="userLocation" placeholder="e.g. Koramangala, Bengaluru"/>
+        </div>
+        <div class="form-group">
+          <label>Charging Type</label>
+          <select id="chargingType">
+            <option value="DC">DC — Fast Charging</option>
+            <option value="AC">AC — Standard</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Connector Type</label>
+          <select id="connectorType">
+            <option value="CCS2">CCS2</option>
+            <option value="CHAdeMO">CHAdeMO</option>
+            <option value="Type 2">Type 2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Minimum Speed (kW)</label>
+          <input type="number" id="minSpeed" value="50" min="7" max="350"/>
+        </div>
+        <div class="form-group">
+          <label>Max Price (₹/kWh)</label>
+          <input type="number" id="maxPrice" value="15" min="1" max="100" step="0.5"/>
+        </div>
+      </div>
+
+      <button class="btn" id="findBtn" onclick="startAgent()">
+        Show Nearby Chargers
+      </button>
+    </div>
+
+    <!-- AGENT LOG -->
+    <div class="card">
+      <div class="card-label">
+        Agent Log
+        <span class="badge badge-idle" id="statusBadge">Idle</span>
+      </div>
+      <div class="log-box" id="logBox">
+        <span class="placeholder">Agent output will appear here…</span>
+      </div>
+    </div>
+
+    <!-- REASONING CARD -->
+    <div class="card" id="reasoningCard" style="display:none">
+      <div class="card-label">Why This Charger Was Selected</div>
+      <div class="reasoning-box" id="reasoningBox"></div>
+    </div>
+
+    <!-- CHARGER LIST / NO CHARGERS / INSUFFICIENT FUNDS -->
+    <div class="card" id="chargerListCard" style="display:none">
+      <div class="card-label" id="chargerListTitle">Available Chargers</div>
+      <div class="charger-list" id="chargerList"></div>
+    </div>
+
+    <!-- BOOKING PROGRESS -->
+    <div class="card" id="bookingLogCard" style="display:none">
+      <div class="card-label">
+        Booking Progress
+        <span class="badge badge-idle" id="bookingStatusBadge">Idle</span>
+      </div>
+      <div class="log-box" id="bookingLogBox"></div>
+    </div>
+
+    <!-- BOOKING CONFIRMATION -->
+    <div class="card" id="confirmationCard" style="display:none">
+      <div class="card-label">Booking Confirmation</div>
+      <div class="booking-confirmed">
+        <h3>✓ Booking Confirmed</h3>
+        <div id="bookingContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentMode = 'browse';
+    let bookingData = {};
+
+    // ── WALLET ───────────────────────────────────────────────
+    async function loadWalletBalance() {
+      try {
+        const r    = await fetch('/wallet/balance');
+        const data = await r.json();
+        const el   = document.getElementById('walletAmount');
+        el.textContent = `₹${parseFloat(data.balance).toFixed(2)}`;
+        el.className   = parseFloat(data.balance) < 100 ? 'wallet-amount wallet-low' : 'wallet-amount';
+      } catch(e) { console.error('Wallet load error', e); }
+    }
+
+    async function topUpWallet() {
+      const btn = document.getElementById('topupBtn');
+      btn.textContent = 'Adding…';
+      btn.disabled    = true;
+      try {
+        const r    = await fetch('/wallet/topup', { method: 'POST' });
+        const data = await r.json();
+        const el   = document.getElementById('walletAmount');
+        el.textContent = `₹${parseFloat(data.balance).toFixed(2)}`;
+        el.className   = 'wallet-amount';
+      } catch(e) { console.error('Top up error', e); }
+      finally {
+        btn.textContent = '+ Add ₹500';
+        btn.disabled    = false;
+      }
+    }
+
+    // ── MODE ─────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('browseBtn').classList.toggle('active', mode === 'browse');
+      document.getElementById('autoBtn').classList.toggle('active', mode === 'auto');
+      document.getElementById('findBtn').textContent =
+        mode === 'browse' ? 'Show Nearby Chargers' : 'Auto Find & Book';
+      document.getElementById('chargerListCard').style.display  = 'none';
+      document.getElementById('confirmationCard').style.display = 'none';
+      document.getElementById('bookingLogCard').style.display   = 'none';
+      document.getElementById('reasoningCard').style.display    = 'none';
+    }
+
+    // ── START AGENT ──────────────────────────────────────────
+    async function startAgent() {
+      const location     = document.getElementById('userLocation').value || 'current location';
+      const chargingType = document.getElementById('chargingType').value;
+      const connector    = document.getElementById('connectorType').value;
+      const minSpeed     = document.getElementById('minSpeed').value;
+      const maxPrice     = document.getElementById('maxPrice').value;
+
+      const message = `The user is located at: ${location}.
+Find available EV chargers nearby.
+
+USER REQUIREMENTS (these are fixed and must not be changed):
+- Charging type: ${chargingType}
+- Connector type: ${connector}
+- Minimum speed: ${minSpeed}kW
+- Maximum price: ₹${maxPrice} per kWh
+
+When calling beckn_search you MUST use charging_type="${chargingType}" and connector_type="${connector}" exactly as stated above. Do not use the vehicle's connector or charging type.`;
+
+      clearUI();
+      setStatus('running', 'statusBadge');
+      document.getElementById('findBtn').disabled = true;
+      bookingData = {};
+
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, mode: currentMode })
+      });
+
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const lines = decoder.decode(value).split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const content = line.slice(6);
+
+          if (content === '[DONE]') {
+            setStatus('done', 'statusBadge');
+            document.getElementById('findBtn').disabled = false;
+            if (bookingData.order_id) showBookingConfirmation();
+            await loadWalletBalance();
+            break;
+          }
+
+          if (content.startsWith('HIDE_REASONING:')) {
+            document.getElementById('reasoningCard').style.display = 'none';
+            continue;
+          }
+
+          if (content.startsWith('AGENT_REASONING:')) {
+            showAgentReasoning(content.slice('AGENT_REASONING:'.length));
+            continue;
+          }
+
+          if (content.startsWith('CHARGER_LIST:')) {
+            try { showChargerList(JSON.parse(content.slice('CHARGER_LIST:'.length))); }
+            catch(e) { console.error(e); }
+            continue;
+          }
+
+          if (content.startsWith('NO_CHARGERS:')) {
+            try {
+              document.getElementById('reasoningCard').style.display = 'none';
+              showNoChargers(JSON.parse(content.slice('NO_CHARGERS:'.length)));
+            } catch(e) { console.error(e); }
+            continue;
+          }
+
+          if (content.startsWith('WALLET_UPDATE:')) {
+            try {
+              const data = JSON.parse(content.slice('WALLET_UPDATE:'.length));
+              const el   = document.getElementById('walletAmount');
+              el.textContent = `₹${parseFloat(data.balance_after).toFixed(2)}`;
+              el.className   = parseFloat(data.balance_after) < 100 ? 'wallet-amount wallet-low' : 'wallet-amount';
+            } catch(e) {}
+            continue;
+          }
+
+          if (content.startsWith('INSUFFICIENT_FUNDS:')) {
+            try { showInsufficientFunds(JSON.parse(content.slice('INSUFFICIENT_FUNDS:'.length))); }
+            catch(e) { console.error(e); }
+            continue;
+          }
+
+          if (content.startsWith('BOOKING_DATA:')) {
+            try { bookingData = JSON.parse(content.slice('BOOKING_DATA:'.length)); }
+            catch(e) {}
+            continue;
+          }
+
+          appendLog(content, 'logBox');
+        }
+      }
+    }
+
+    // ── BOOK SPECIFIC CHARGER ─────────────────────────────────
+    async function bookSpecificCharger(chargerId, chargerName) {
+      document.getElementById('bookingLogCard').style.display   = 'block';
+      document.getElementById('confirmationCard').style.display = 'none';
+      document.getElementById('bookingLogBox').innerHTML        = '';
+      bookingData = {};
+      setStatus('running', 'bookingStatusBadge');
+      document.querySelectorAll('.book-btn').forEach(b => b.disabled = true);
+      appendLog(`Booking ${chargerName}…`, 'bookingLogBox');
+      document.getElementById('bookingLogCard').scrollIntoView({ behavior: 'smooth' });
+
+      const response = await fetch('/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ charger_id: chargerId })
+      });
+
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const content = line.slice(6);
+
+          if (content === '[DONE]') {
+            setStatus('done', 'bookingStatusBadge');
+            document.querySelectorAll('.book-btn').forEach(b => b.disabled = false);
+            if (bookingData.order_id) showBookingConfirmation();
+            await loadWalletBalance();
+            break;
+          }
+
+          if (content.startsWith('WALLET_UPDATE:')) {
+            try {
+              const data = JSON.parse(content.slice('WALLET_UPDATE:'.length));
+              const el   = document.getElementById('walletAmount');
+              el.textContent = `₹${parseFloat(data.balance_after).toFixed(2)}`;
+              el.className   = parseFloat(data.balance_after) < 100 ? 'wallet-amount wallet-low' : 'wallet-amount';
+            } catch(e) {}
+            continue;
+          }
+
+          if (content.startsWith('INSUFFICIENT_FUNDS:')) {
+            try {
+              const data = JSON.parse(content.slice('INSUFFICIENT_FUNDS:'.length));
+              document.getElementById('bookingLogCard').style.display = 'none';
+              showInsufficientFunds(data);
+            } catch(e) {}
+            continue;
+          }
+
+          if (content.startsWith('BOOKING_DATA:')) {
+            try { bookingData = JSON.parse(content.slice('BOOKING_DATA:'.length)); }
+            catch(e) {}
+            continue;
+          }
+
+          appendLog(content, 'bookingLogBox');
+        }
+      }
+    }
+
+    // ── REASONING ────────────────────────────────────────────
+    function showAgentReasoning(text) {
+      const card = document.getElementById('reasoningCard');
+      const box  = document.getElementById('reasoningBox');
+      card.style.display = 'block';
+      let html = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^[-•]\s(.+)$/gm, '<li>$1</li>')
+        .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul style="padding-left:18px;margin:8px 0">$&</ul>')
+        .replace(/\n\n/g, '<br/><br/>')
+        .replace(/\n/g, '<br/>');
+      box.innerHTML = html;
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── CHARGER LIST ─────────────────────────────────────────
+    function showChargerList(chargers) {
+      document.getElementById('chargerListTitle').textContent = 'Available Chargers — Pick One to Book';
+      const card = document.getElementById('chargerListCard');
+      const list = document.getElementById('chargerList');
+      card.style.display = 'block';
+      list.innerHTML     = '';
+
+      chargers.forEach(c => {
+        const congestionClass = `congestion-${(c.congestion || 'medium').toLowerCase()}`;
+        const slotsColor = c.available_slots <= 1 ? 'var(--danger)' :
+                           c.available_slots <= 2 ? 'var(--warning)' : 'var(--success)';
+        const amenityTags = (c.amenities || []).map(a => `<span class="amenity-tag">${a}</span>`).join('');
+        const stars = '★'.repeat(Math.round(c.rating || 4)) + '☆'.repeat(5 - Math.round(c.rating || 4));
+
+        const div = document.createElement('div');
+        div.className = 'charger-card';
+        div.innerHTML = `
+          <div class="charger-top">
+            <div>
+              <div class="charger-name">${c.name}</div>
+              <div class="charger-address">📍 ${c.address}</div>
+              <div class="charger-operator">${c.operator}</div>
+            </div>
+            <button class="book-btn"
+              onclick="bookSpecificCharger('${c.id}','${c.name.replace(/'/g,"\\'")}')">
+              Book
+            </button>
+          </div>
+          <div class="charger-stats">
+            <div class="stat-box">
+              <span class="stat-value">${c.speed_kw} kW</span>
+              <span class="stat-label">Speed</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value">₹${c.price_per_kwh}</span>
+              <span class="stat-label">Per kWh</span>
+            </div>
+            <div class="stat-box ${congestionClass}">
+              <span class="stat-value">${c.travel_minutes} min</span>
+              <span class="stat-label">Travel</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value">${c.distance_km} km</span>
+              <span class="stat-label">Distance</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value" style="color:${slotsColor}">${c.available_slots}/${c.total_slots}</span>
+              <span class="stat-label">Slots</span>
+            </div>
+          </div>
+          <div class="charger-footer">
+            <div class="amenities">${amenityTags}</div>
+            <div class="rating">⭐ ${c.rating} ${stars}</div>
+          </div>`;
+        list.appendChild(div);
+      });
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── NO CHARGERS ───────────────────────────────────────────
+    function showNoChargers(data) {
+      document.getElementById('chargerListTitle').textContent = 'Search Results';
+      const card = document.getElementById('chargerListCard');
+      const list = document.getElementById('chargerList');
+      card.style.display = 'block';
+
+      let msg = data.message || 'No chargers matched your criteria.';
+      const sentences = msg.split('. ');
+      if (sentences.length > 2) msg = sentences.slice(0,2).join('. ') + '.';
+
+      const rejectedHTML = (data.rejected || []).map(r => `
+        <div class="rejected-item">
+          <div class="rejected-name">${r.name}</div>
+          ${(r.reasons || []).map(reason => `<div class="rejected-reason">· ${reason}</div>`).join('')}
+        </div>`).join('');
+
+      const suggestionsHTML = (data.suggestions || []).map(s =>
+        `<div class="suggestion-item">→ ${s}</div>`).join('');
+
+      list.innerHTML = `
+        <div class="no-chargers-box">
+          <div class="no-chargers-title">No Chargers Found</div>
+          <div class="no-chargers-msg">${msg}</div>
+        </div>
+        ${rejectedHTML ? `<div class="rejected-section-title" style="margin-top:16px">Rejected Chargers</div><div class="rejected-list">${rejectedHTML}</div>` : ''}
+        ${suggestionsHTML ? `<div class="suggestions-box"><div class="suggestions-title">Suggestions</div>${suggestionsHTML}</div>` : ''}`;
+
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── INSUFFICIENT FUNDS ────────────────────────────────────
+    function showInsufficientFunds(data) {
+      document.getElementById('chargerListTitle').textContent = 'Payment Issue';
+      const card = document.getElementById('chargerListCard');
+      const list = document.getElementById('chargerList');
+      card.style.display = 'block';
+      list.innerHTML = `
+        <div class="insufficient-funds-box">
+          <div class="insufficient-funds-title">Insufficient Wallet Balance</div>
+          <div class="insufficient-funds-msg">
+            ${data.message}<br/><br/>
+            Top up at least <strong>₹${data.shortfall}</strong> using the wallet button above and try again.
+          </div>
+        </div>`;
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── BOOKING CONFIRMATION ──────────────────────────────────
+    function showBookingConfirmation() {
+      if (!bookingData.order_id) return;
+      const card = document.getElementById('confirmationCard');
+      card.style.display = 'block';
+      const amenityTags = (bookingData.amenities || []).map(a => `<span class="amenity-tag">${a}</span>`).join('');
+
+      document.getElementById('bookingContent').innerHTML = `
+        <div class="booking-section">
+          <div class="booking-section-title">Booking Reference</div>
+          <div class="booking-grid">
+            <div class="booking-item"><label>Order ID</label><span class="highlight">${bookingData.order_id}</span></div>
+            <div class="booking-item"><label>Session ID</label><span>${bookingData.session_id}</span></div>
+            <div class="booking-item"><label>Status</label><span class="success">${bookingData.status}</span></div>
+            <div class="booking-item"><label>Confirmed At</label><span>${new Date(bookingData.confirmed_at).toLocaleTimeString()}</span></div>
+          </div>
+        </div>
+
+        <hr class="booking-divider"/>
+
+        <div class="booking-section">
+          <div class="booking-section-title">Payment</div>
+          <div class="booking-grid">
+            <div class="booking-item"><label>Amount Charged</label><span class="highlight">₹${bookingData.estimated_cost_20kwh || (bookingData.price_per_kwh * 20).toFixed(2)}</span></div>
+            <div class="booking-item"><label>Payment Status</label><span class="success">PAID</span></div>
+            <div class="booking-item"><label>Transaction ID</label><span style="font-size:12px">${bookingData.transaction_id || '—'}</span></div>
+            <div class="booking-item"><label>Method</label><span>Wallet (BAP)</span></div>
+          </div>
+        </div>
+
+        <hr class="booking-divider"/>
+
+        <div class="booking-section">
+          <div class="booking-section-title">Charger Details</div>
+          <div class="booking-grid">
+            <div class="booking-item"><label>Charger</label><span>${bookingData.charger_name}</span></div>
+            <div class="booking-item"><label>Operator</label><span>${bookingData.operator || '—'}</span></div>
+            <div class="booking-item"><label>Address</label><span>${bookingData.charger_address}</span></div>
+            <div class="booking-item"><label>Distance</label><span>${bookingData.distance_km} km away</span></div>
+          </div>
+        </div>
+
+        <hr class="booking-divider"/>
+
+        <div class="booking-section">
+          <div class="booking-section-title">Charging Info</div>
+          <div class="booking-grid">
+            <div class="booking-item"><label>Connector</label><span>${bookingData.connector_type}</span></div>
+            <div class="booking-item"><label>Type</label><span>${bookingData.charging_type || 'DC'}</span></div>
+            <div class="booking-item"><label>Speed</label><span class="highlight">${bookingData.speed_kw} kW</span></div>
+            <div class="booking-item"><label>Price</label><span class="highlight">₹${bookingData.price_per_kwh}/kWh</span></div>
+          </div>
+        </div>
+
+        ${amenityTags ? `<hr class="booking-divider"/><div class="booking-section"><div class="booking-section-title">Amenities Nearby</div><div class="amenities-booking">${amenityTags}</div></div>` : ''}
+
+        <hr class="booking-divider"/>
+        <div class="booking-message">${bookingData.message}</div>`;
+
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── HELPERS ───────────────────────────────────────────────
+    function appendLog(text, boxId) {
+      const box = document.getElementById(boxId);
+      const placeholder = box.querySelector('.placeholder');
+      if (placeholder) placeholder.remove();
+      const line = document.createElement('div');
+      if      (text.includes('🔧')) line.className = 'log-tool';
+      else if (text.includes('📦')) line.className = 'log-result';
+      else if (text.includes('✅')) line.className = 'log-success';
+      else if (text.includes('❌')) line.className = 'log-error';
+      else if (text.includes('💳')) line.className = 'log-wallet';
+      else                          line.className = 'log-info';
+      line.textContent = text;
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function setStatus(state, badgeId) {
+      const badge = document.getElementById(badgeId);
+      const map = {
+        idle:    ['Idle',    'badge-idle'],
+        running: ['Running', 'badge-running'],
+        done:    ['Done',    'badge-done'],
+        error:   ['Error',   'badge-error'],
+      };
+      badge.textContent = map[state][0];
+      badge.className   = `badge ${map[state][1]}`;
+    }
+
+    function clearUI() {
+      document.getElementById('logBox').innerHTML = '<span class="placeholder">Agent output will appear here…</span>';
+      setStatus('idle', 'statusBadge');
+      bookingData = {};
+      document.getElementById('reasoningCard').style.display    = 'none';
+      document.getElementById('chargerListCard').style.display  = 'none';
+      document.getElementById('confirmationCard').style.display = 'none';
+      document.getElementById('bookingLogCard').style.display   = 'none';
+    }
+
+    // Load wallet on startup
+    loadWalletBalance();
+  </script>
+
+</body>
+</html>
